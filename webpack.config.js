@@ -19,7 +19,7 @@ module.exports = {
         extensions: ['.ts', '.tsx', '.js']
     },
     output: {
-        filename: 'textygons.js',
+        filename: 'texterfall.js',
         path: path.resolve(__dirname, 'dist'),
         libraryTarget: 'umd',
         umdNamedDefine: true

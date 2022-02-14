@@ -1,5 +1,5 @@
 {
-  "name": "Textygons",
+  "name": "Texterfall",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -38,13 +38,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/StynVanDeHaterd/textygons.js.git"
+    "url": "git+https://github.com/StynVanDeHaterd/texterfall.js.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/StynVanDeHaterd/textygons.js/issues"
+    "url": "https://github.com/StynVanDeHaterd/texterfall.js/issues"
   },
-  "homepage": "https://github.com/StynVanDeHaterd/textygons.js#readme"
+  "homepage": "https://github.com/StynVanDeHaterd/texterfall.js#readme"
 }
