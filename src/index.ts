@@ -37,7 +37,7 @@ type CharacterStream = {
     streamColor: string;
 }
 
-interface IConfig{
+type Config = {
     canvasId: string;
     fontName: string;
     fontSize: number;
@@ -126,7 +126,7 @@ export class Texterfall{
     private static CHARACTER_DROPLET_LIFESPAN_THRESHOLD: number = 92;
     private static RANDOM_RGB_MINIMUM: number = 100;
 
-    private config: IConfig;
+    private config: Config;
     private canvas: Canvas;
     private characterLibrary: CharacterRecord[];
     private characterStreams: CharacterStream[];
@@ -134,8 +134,8 @@ export class Texterfall{
     private timer: DeltaTime;
     private interval: number;
 
-    constructor(config: IConfig | null){
-        const defaultConfig: IConfig = {
+    constructor(config: Config){
+        const defaultConfig: Config = {
             canvasId: "testCanvas",
             fontName: "Arial",
             fontSize: 16,
@@ -145,13 +145,7 @@ export class Texterfall{
             randomColors: false,
             fps: 144
         }
-
-        if(isNull(config) || isUndefined(config)){
-            this.config = defaultConfig;
-        }
-        else{
-            this.config = config;
-        }
+        this.config = this.mergeDefaultConfig(config, defaultConfig);
 
         this.canvas = this.loadCanvas();
         this.characterLibrary = this.createCharacterLibrary();
@@ -171,6 +165,21 @@ export class Texterfall{
         });
 
         setInterval(this.update.bind(this), this.interval);
+    }
+
+    private mergeDefaultConfig(config: Config, defaultConfig: Config): Config{
+        if(isNull(config) || isUndefined(config)){
+            return defaultConfig;
+        }
+
+        Object.keys(defaultConfig).forEach((key: string) => {
+            if (!config.hasOwnProperty(key)) {
+                //@ts-ignore
+                config[key] = defaultConfig[key];
+            }
+        });
+
+        return config;
     }
 
     private update(): void{
