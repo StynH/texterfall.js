@@ -34,6 +34,7 @@ type CharacterStream = {
     characterDroplets: CharacterDroplet[];
     offsetX: number;
     fallingSpeed: number;
+    streamColor: string;
 }
 
 interface IConfig{
@@ -43,6 +44,7 @@ interface IConfig{
     characters: string;
     characterColor: string;
     backgroundColor: string;
+    randomColors: boolean;
     fps: number;
 }
 
@@ -87,6 +89,14 @@ class NumberHelper{
 
 class ColorHelper{
 
+    static randomColor(minRgb: number = 0): string{
+        return ColorHelper.rgbToHex(
+            NumberHelper.randomIntBetween(minRgb, 255),
+            NumberHelper.randomIntBetween(minRgb, 255),
+            NumberHelper.randomIntBetween(minRgb, 255)
+        );
+    }
+
     static transitionToColor(start: string, end: string, step: number): string{
         const startRgb = ColorHelper.hexToRgb(start)!;
         const endRgb = ColorHelper.hexToRgb(end)!;
@@ -114,6 +124,7 @@ class ColorHelper{
 export class Texterfall{
 
     private static CHARACTER_DROPLET_LIFESPAN_THRESHOLD: number = 92;
+    private static RANDOM_RGB_MINIMUM: number = 100;
 
     private config: IConfig;
     private canvas: Canvas;
@@ -131,6 +142,7 @@ export class Texterfall{
             characters: "0123456789",
             characterColor: "#39FF14",
             backgroundColor: "#000000",
+            randomColors: false,
             fps: 144
         }
 
@@ -223,7 +235,8 @@ export class Texterfall{
             characterStreams.push({
                 characterDroplets: [],
                 offsetX: x,
-                fallingSpeed: NumberHelper.randomIntBetween(5, 45) / 100
+                fallingSpeed: NumberHelper.randomIntBetween(5, 45) / 100,
+                streamColor: this.config.randomColors ? ColorHelper.randomColor(Texterfall.RANDOM_RGB_MINIMUM) : this.config.characterColor
             });
 
             x += Math.round(((widestCharacterWidth + this.characterMargin) + Number.EPSILON) * 100) / 100;
@@ -267,7 +280,7 @@ export class Texterfall{
                 y: position
             },
             lifespan: 100,
-            color: this.config.characterColor
+            color: characterStream.streamColor
         };
     }
 
@@ -280,6 +293,9 @@ export class Texterfall{
 
     private resetCharacterStream(characterStream: CharacterStream) {
         characterStream.fallingSpeed = NumberHelper.randomIntBetween(5, 45) / 100;
+        if(this.config.randomColors){
+            characterStream.streamColor = ColorHelper.randomColor(Texterfall.RANDOM_RGB_MINIMUM);
+        }
     }
 
     private updateCharacterStreams(): void{
@@ -298,7 +314,7 @@ export class Texterfall{
                     cleanStream = true;
                 }
 
-                characterDroplet.color = ColorHelper.transitionToColor(this.config.backgroundColor, this.config.characterColor, characterDroplet.lifespan / 100);
+                characterDroplet.color = ColorHelper.transitionToColor(this.config.backgroundColor, characterStream.streamColor, characterDroplet.lifespan / 100);
             }
         });
 
