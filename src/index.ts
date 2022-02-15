@@ -26,13 +26,14 @@ type CharacterRecord = {
 type CharacterDroplet = {
     character: string;
     position: Position;
+    lifespan: number;
+    color: string;
 }
 
 type CharacterStream = {
     characterDroplets: CharacterDroplet[];
     offsetX: number;
     fallingSpeed: number;
-    timer: number;
 }
 
 interface IConfig{
@@ -72,7 +73,47 @@ class CanvasHelper{
 
 }
 
+class NumberHelper{
+
+    static randomIntBetween(min: number, max: number): number{
+        return Math.floor(Math.random() * (max - min + 1) + min)
+    }
+
+    static lerp(a: number, b: number, u: number): number{
+        return (1 - u) * a + u * b;
+    }
+
+}
+
+class ColorHelper{
+
+    static transitionToColor(start: string, end: string, step: number): string{
+        const startRgb = ColorHelper.hexToRgb(start)!;
+        const endRgb = ColorHelper.hexToRgb(end)!;
+        const r = Math.floor(NumberHelper.lerp(startRgb.r, endRgb.r, step));
+        const g = Math.floor(NumberHelper.lerp(startRgb.g, endRgb.g, step));
+        const b = Math.floor(NumberHelper.lerp(startRgb.b, endRgb.b, step));
+        return ColorHelper.rgbToHex(r, g, b);
+    }
+
+    static hexToRgb(hex: string): RGB | null {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+
+    static rgbToHex(r: number, g: number, b: number): string {
+        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+}
+
 export class Texterfall{
+
+    private static CHARACTER_DROPLET_LIFESPAN_THRESHOLD: number = 92;
 
     private config: IConfig;
     private canvas: Canvas;
@@ -100,10 +141,10 @@ export class Texterfall{
             this.config = config;
         }
 
-        this.canvas = this.LoadCanvas();
-        this.characterLibrary = this.CreateCharacterLibrary();
+        this.canvas = this.loadCanvas();
+        this.characterLibrary = this.createCharacterLibrary();
         this.characterStreams = [];
-        this.characterMargin = this.CalculateStreamMargin(this.GetWidestCharacterFromStream());
+        this.characterMargin = this.calculateStreamMargin(this.getWidestCharacterFromStream());
 
         this.timer = new DeltaTime();
         this.interval = 1000 / this.config.fps;
@@ -112,9 +153,9 @@ export class Texterfall{
     }
 
     public start(): void{
-        this.characterStreams = this.GenerateCharacterStreams(this.GetWidestCharacterFromStream());
+        this.characterStreams = this.generateCharacterStreams(this.getWidestCharacterFromStream());
         _.forEach(this.characterStreams, (characterStream: CharacterStream) => {
-            characterStream.characterDroplets.push(this.GenerateCharacterDroplet(characterStream));
+            characterStream.characterDroplets.push(this.generateCharacterDroplet(characterStream));
         });
 
         setInterval(this.update.bind(this), this.interval);
@@ -122,26 +163,31 @@ export class Texterfall{
 
     private update(): void{
         this.timer.update();
+        this.updateCharacterStreams();
         this.draw();
     }
 
     private draw(): void{
-        this.setFontColor();
+        this.clearCanvas();
         _.forEach(this.characterStreams, (characterStream: CharacterStream) => {
-            this.DrawCharacterStream(characterStream);
+            this.drawCharacterStream(characterStream);
         });
     }
+
+    /*=============================================
+    Canvas
+    =============================================*/
 
     private clearCanvas(): void{
         this.canvas.context.fillStyle = this.config.backgroundColor;
         this.canvas.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    private setFontColor(): void{
-        this.canvas.context.fillStyle = this.config.characterColor;
+    private setFontColor(color: string): void{
+        this.canvas.context.fillStyle = color;
     }
 
-    private LoadCanvas(): Canvas{
+    private loadCanvas(): Canvas{
         const c = <HTMLCanvasElement>document.getElementById(this.config.canvasId);
         const ctx = c.getContext("2d")!;
 
@@ -150,7 +196,7 @@ export class Texterfall{
         return { element: c, context: ctx, width: c.width, height: c.height };
     }
 
-    private CreateCharacterLibrary(): CharacterRecord[]{
+    private createCharacterLibrary(): CharacterRecord[]{
         const characterLibrary: CharacterRecord[] = [];
 
         _.forEach(this.config.characters.split(''), (character: string) => {
@@ -164,17 +210,20 @@ export class Texterfall{
         return characterLibrary;
     }
 
-    private GenerateCharacterStreams(widestCharacterWidth: number): CharacterStream[]{
+    /*=============================================
+    Character Streams
+    =============================================*/
+
+    private generateCharacterStreams(widestCharacterWidth: number): CharacterStream[]{
         const characterStreams: CharacterStream[] = [];
-        const amountOfStreamsFittable = Math.floor(this.canvas.width / widestCharacterWidth);
-        
+        const amountOfStreamsFitable = Math.floor(this.canvas.width / widestCharacterWidth);
+
         let x = 0;
-        for(let i = 0; i < amountOfStreamsFittable; ++i){
+        for(let i = 0; i < amountOfStreamsFitable; ++i){
             characterStreams.push({
                 characterDroplets: [],
                 offsetX: x,
-                fallingSpeed: 5,
-                timer: 0
+                fallingSpeed: NumberHelper.randomIntBetween(5, 45) / 100
             });
 
             x += Math.round(((widestCharacterWidth + this.characterMargin) + Number.EPSILON) * 100) / 100;
@@ -183,7 +232,7 @@ export class Texterfall{
         return characterStreams;
     }
 
-    private GetWidestCharacterFromStream(): number{
+    private getWidestCharacterFromStream(): number{
         let widest = Number.MIN_SAFE_INTEGER;
 
         _.forEach(this.characterLibrary, (character: CharacterRecord) => {
@@ -195,56 +244,82 @@ export class Texterfall{
         return widest;
     }
 
-    private CalculateStreamMargin(widestCharacterWidth: number): number{
-        const amountOfStreamsFittable = Math.floor(this.canvas.width / widestCharacterWidth);
-        const spaceLeft = this.canvas.width - (amountOfStreamsFittable * widestCharacterWidth);
-        const margin = spaceLeft / amountOfStreamsFittable;
+    private calculateStreamMargin(widestCharacterWidth: number): number{
+        const amountOfStreamsFitable = Math.floor(this.canvas.width / widestCharacterWidth);
+        const spaceLeft = this.canvas.width - (amountOfStreamsFitable * widestCharacterWidth);
+        const margin = spaceLeft / amountOfStreamsFitable;
         return Math.round((margin + Number.EPSILON) * 100) / 100;
     }
 
-    private GenerateCharacterDroplet(characterStream: CharacterStream): CharacterDroplet{
-        let gapCloser = this.config.fontSize / 4;
+    private canGenerateDroplet(characterStream:CharacterStream): boolean{
+        return characterStream.characterDroplets.length == 0 || characterStream.characterDroplets[characterStream.characterDroplets.length - 1].position.y + this.config.fontSize < this.canvas.height;
+    }
+
+    private generateCharacterDroplet(characterStream: CharacterStream): CharacterDroplet{
+        let position = this.config.fontSize;
         if(characterStream.characterDroplets.length > 0){
-            gapCloser = (characterStream.characterDroplets.length + 1) * (this.config.fontSize / 4);
+            position = characterStream.characterDroplets[characterStream.characterDroplets.length - 1].position.y + this.config.fontSize;
         }
         return {
             character: this.characterLibrary[Math.floor(Math.random() * this.characterLibrary.length)].character,
             position: {
                 x: characterStream.offsetX,
-                y: ((characterStream.characterDroplets.length * this.config.fontSize) + this.config.fontSize) - gapCloser
-            }
+                y: position
+            },
+            lifespan: 100,
+            color: this.config.characterColor
         };
     }
-    
-    private DrawCharacterStream(CharacterStream: CharacterStream): void{
-        _.forEach(CharacterStream.characterDroplets, (characterDroplet: CharacterDroplet) => {
+
+    private drawCharacterStream(characterStream: CharacterStream): void{
+        _.forEach(characterStream.characterDroplets, (characterDroplet: CharacterDroplet) => {
+            this.setFontColor(characterDroplet.color);
             this.canvas.context.fillText(characterDroplet.character, characterDroplet.position.x, characterDroplet.position.y);
         });
     }
 
-    private transitionToColor(start: string, end: string, step: number): string{
-        const startRgb = this.HexToRgb(start)!;
-        const endRgb = this.HexToRgb(end)!;
-        const r = Math.floor(this.Lerp(startRgb.r, endRgb.r, step));
-        const g = Math.floor(this.Lerp(startRgb.g, endRgb.g, step));
-        const b = Math.floor(this.Lerp(startRgb.b, endRgb.b, step));
-        return this.RgbToHex(r, g, b);
+    private resetCharacterStream(characterStream: CharacterStream) {
+        characterStream.fallingSpeed = NumberHelper.randomIntBetween(5, 45) / 100;
     }
 
-    private HexToRgb(hex: string): RGB | null {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : null;
+    private updateCharacterStreams(): void{
+        _.forEach(this.characterStreams, (characterStream: CharacterStream) => {
+            this.updateCharacterStream(characterStream);
+        });
     }
 
-    private RgbToHex(r: number, g: number, b: number): string {
-        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-    }
+    private updateCharacterStream(characterStream: CharacterStream): void{
+        let cleanStream = false;
+        _.forEach(characterStream.characterDroplets, (characterDroplet: CharacterDroplet) => {
+            if(characterDroplet.lifespan > 0){
+                characterDroplet.lifespan -= characterStream.fallingSpeed * this.timer.deltaTime;
+                if(characterDroplet.lifespan < 0){
+                    characterDroplet.lifespan = 0;
+                    cleanStream = true;
+                }
 
-    private Lerp(a: number, b: number, u: number): number{
-        return (1 - u) * a + u * b;
+                characterDroplet.color = ColorHelper.transitionToColor(this.config.backgroundColor, this.config.characterColor, characterDroplet.lifespan / 100);
+            }
+        });
+
+        const allDropletsBelowThreshold = _.every(characterStream.characterDroplets, (characterDroplet: CharacterDroplet) => {
+            return characterDroplet.lifespan <= Texterfall.CHARACTER_DROPLET_LIFESPAN_THRESHOLD;
+        });
+
+        if(allDropletsBelowThreshold){
+            if(this.canGenerateDroplet(characterStream)){
+                characterStream.characterDroplets.push(this.generateCharacterDroplet(characterStream));
+            }
+        }
+
+        if(cleanStream){
+            characterStream.characterDroplets = _.filter(characterStream.characterDroplets, (characterDroplet: CharacterDroplet) =>{
+                return characterDroplet.lifespan > 0;
+            });
+        }
+
+        if(characterStream.characterDroplets.length == 0){
+            this.resetCharacterStream(characterStream);
+        }
     }
 }
