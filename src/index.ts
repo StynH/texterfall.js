@@ -290,7 +290,6 @@ export class Texterfall{
             }
         });
 
-        console.log(this.characterLibrary);
         return widest;
     }
 
