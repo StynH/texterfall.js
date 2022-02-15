@@ -45,7 +45,7 @@ type Config = {
     characterColor: string;
     backgroundColor: string;
     randomColors: boolean;
-    fluxuateColor: boolean;
+    fluctuateColor: boolean;
     fps: number;
 }
 
@@ -90,7 +90,7 @@ class NumberHelper{
 
 class ColorHelper{
 
-    private static MIN_FLUXUATION = 5;
+    private static MIN_FLUCTUATION = 5;
 
     static randomColor(minRgb: number = 0): string{
         return ColorHelper.rgbToHex(
@@ -122,12 +122,12 @@ class ColorHelper{
         return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
     }
 
-    static fluxuateColor(hex: string, fluxuation: number): string{
+    static fluctuateColor(hex: string, fluctuation: number): string{
         let rgb = ColorHelper.hexToRgb(hex)!;
-        let fluxuationFinal = NumberHelper.randomIntBetween(ColorHelper.MIN_FLUXUATION, fluxuation) / 10;
-        rgb.r = Math.min(255, Math.floor(rgb.r * fluxuationFinal));
-        rgb.g = Math.min(255, Math.floor(rgb.g * fluxuationFinal));
-        rgb.b = Math.min(255, Math.floor(rgb.b * fluxuationFinal));
+        let fluctuationFinal = NumberHelper.randomIntBetween(ColorHelper.MIN_FLUCTUATION, fluctuation) / 10;
+        rgb.r = Math.min(255, Math.floor(rgb.r * fluctuationFinal));
+        rgb.g = Math.min(255, Math.floor(rgb.g * fluctuationFinal));
+        rgb.b = Math.min(255, Math.floor(rgb.b * fluctuationFinal));
 
         return ColorHelper.rgbToHex(rgb.r ,rgb.g, rgb.b);
     }
@@ -138,7 +138,7 @@ export class Texterfall{
 
     private static CHARACTER_DROPLET_LIFESPAN_THRESHOLD: number = 92;
     private static RANDOM_RGB_MINIMUM: number = 100;
-    private static RGB_FLUXUATION: number = 25;
+    private static RGB_FLUCTUATION: number = 25;
 
     private config: Config;
     private canvas: Canvas;
@@ -157,7 +157,7 @@ export class Texterfall{
             characterColor: "#39FF14",
             backgroundColor: "#000000",
             randomColors: false,
-            fluxuateColor: false,
+            fluctuateColor: false,
             fps: 144
         }
         this.config = this.mergeDefaultConfig(config, defaultConfig);
@@ -255,8 +255,8 @@ export class Texterfall{
             return ColorHelper.randomColor(Texterfall.RANDOM_RGB_MINIMUM);
         }
 
-        if(this.config.fluxuateColor){
-            return ColorHelper.fluxuateColor(this.config.characterColor, Texterfall.RGB_FLUXUATION)
+        if(this.config.fluctuateColor){
+            return ColorHelper.fluctuateColor(this.config.characterColor, Texterfall.RGB_FLUCTUATION)
         }
 
         return this.config.characterColor;
