@@ -45,6 +45,7 @@ type Config = {
     characterColor: string;
     backgroundColor: string;
     randomColors: boolean;
+    fluxuateColor: boolean;
     fps: number;
 }
 
@@ -89,6 +90,8 @@ class NumberHelper{
 
 class ColorHelper{
 
+    private static MIN_FLUXUATION = 5;
+
     static randomColor(minRgb: number = 0): string{
         return ColorHelper.rgbToHex(
             NumberHelper.randomIntBetween(minRgb, 255),
@@ -119,12 +122,23 @@ class ColorHelper{
         return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
     }
 
+    static fluxuateColor(hex: string, fluxuation: number): string{
+        let rgb = ColorHelper.hexToRgb(hex)!;
+        let fluxuationFinal = NumberHelper.randomIntBetween(ColorHelper.MIN_FLUXUATION, fluxuation) / 10;
+        rgb.r = Math.min(255, Math.floor(rgb.r * fluxuationFinal));
+        rgb.g = Math.min(255, Math.floor(rgb.g * fluxuationFinal));
+        rgb.b = Math.min(255, Math.floor(rgb.b * fluxuationFinal));
+
+        return ColorHelper.rgbToHex(rgb.r ,rgb.g, rgb.b);
+    }
+
 }
 
 export class Texterfall{
 
     private static CHARACTER_DROPLET_LIFESPAN_THRESHOLD: number = 92;
     private static RANDOM_RGB_MINIMUM: number = 100;
+    private static RGB_FLUXUATION: number = 25;
 
     private config: Config;
     private canvas: Canvas;
@@ -143,6 +157,7 @@ export class Texterfall{
             characterColor: "#39FF14",
             backgroundColor: "#000000",
             randomColors: false,
+            fluxuateColor: false,
             fps: 144
         }
         this.config = this.mergeDefaultConfig(config, defaultConfig);
@@ -235,6 +250,18 @@ export class Texterfall{
     Character Streams
     =============================================*/
 
+    private getStreamColorBasedOnConfig(): string {
+        if(this.config.randomColors){
+            return ColorHelper.randomColor(Texterfall.RANDOM_RGB_MINIMUM);
+        }
+
+        if(this.config.fluxuateColor){
+            return ColorHelper.fluxuateColor(this.config.characterColor, Texterfall.RGB_FLUXUATION)
+        }
+
+        return this.config.characterColor;
+    }
+
     private generateCharacterStreams(widestCharacterWidth: number): CharacterStream[]{
         const characterStreams: CharacterStream[] = [];
         const amountOfStreamsFitable = Math.floor(this.canvas.width / widestCharacterWidth);
@@ -245,7 +272,7 @@ export class Texterfall{
                 characterDroplets: [],
                 offsetX: x,
                 fallingSpeed: NumberHelper.randomIntBetween(5, 45) / 100,
-                streamColor: this.config.randomColors ? ColorHelper.randomColor(Texterfall.RANDOM_RGB_MINIMUM) : this.config.characterColor
+                streamColor: this.getStreamColorBasedOnConfig()
             });
 
             x += Math.round(((widestCharacterWidth + this.characterMargin) + Number.EPSILON) * 100) / 100;
@@ -263,6 +290,7 @@ export class Texterfall{
             }
         });
 
+        console.log(this.characterLibrary);
         return widest;
     }
 
@@ -302,9 +330,7 @@ export class Texterfall{
 
     private resetCharacterStream(characterStream: CharacterStream) {
         characterStream.fallingSpeed = NumberHelper.randomIntBetween(5, 45) / 100;
-        if(this.config.randomColors){
-            characterStream.streamColor = ColorHelper.randomColor(Texterfall.RANDOM_RGB_MINIMUM);
-        }
+        characterStream.streamColor = this.getStreamColorBasedOnConfig();
     }
 
     private updateCharacterStreams(): void{
