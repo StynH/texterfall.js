@@ -1,6 +1,7 @@
 const path = require('path');
 const webpack = require('webpack');
 const MinifyPlugin = require("babel-minify-webpack-plugin");
+const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
 
 module.exports = {
     watch: true,
@@ -25,6 +26,7 @@ module.exports = {
         umdNamedDefine: true
     },
     plugins: [
+        new LodashModuleReplacementPlugin(),
         new MinifyPlugin({}, {})
     ]
 };
